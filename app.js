@@ -1,4 +1,3 @@
-// ใส่ API Key ที่สมัครฟรีจาก https://openweathermap.org/api
 const apiKey = 'YOUR_API_KEY';
 const baseUrl = 'https://api.openweathermap.org/data/2.5';
 
@@ -11,184 +10,204 @@ const forecastSection = document.getElementById('forecastSection');
 const forecastList = document.getElementById('forecastList');
 const multiResult = document.getElementById('multiResult');
 
-// ---------- Fetch ----------
-
-async function fetchJson(endpoint, city) {
-    const url = `${baseUrl}/${endpoint}?q=${encodeURIComponent(city)}&units=metric&lang=th&appid=${apiKey}`;
+async function getData(type, city) {
+    const url = baseUrl + '/' + type + '?q=' + encodeURIComponent(city) + '&units=metric&lang=th&appid=' + apiKey;
     const response = await fetch(url);
+
     if (!response.ok) {
-        if (response.status === 404) throw new Error(`ไม่พบเมือง "${city}"`);
-        if (response.status === 401) throw new Error('API Key ไม่ถูกต้อง หรือยังไม่ Active (อาจใช้เวลาสักครู่)');
-        throw new Error(`เรียก API ไม่สำเร็จ (HTTP ${response.status})`);
+        if (response.status === 404) {
+            throw new Error('ไม่พบเมือง ' + city);
+        }
+        if (response.status === 401) {
+            throw new Error('API Key ไม่ถูกต้อง หรือยังไม่ Active');
+        }
+        throw new Error('เรียก API ไม่สำเร็จ (' + response.status + ')');
     }
-    return await response.json();
+
+    const data = await response.json();
+    return data;
 }
 
-async function fetchWeather(city) {
-    return fetchJson('weather', city);
-}
-
-async function fetchForecast(city) {
-    return fetchJson('forecast', city);
-}
-
-// ---------- Display ----------
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-function iconUrl(code) {
-    return `https://openweathermap.org/img/wn/${code}@2x.png`;
-}
-
-function weatherCardHtml(data) {
+function makeCard(data) {
     const temp = Math.round(data.main.temp);
-    const humidity = data.main.humidity;
-    const pressure = data.main.pressure;
-    const wind = data.wind.speed;
+    const icon = 'https://openweathermap.org/img/wn/' + data.weather[0].icon + '@2x.png';
+
+    // ใช้ textContent ตอนสร้างชื่อเมือง กันข้อมูลแปลกๆ เข้ามาเป็น HTML
+    const cityText = document.createElement('span');
+    cityText.textContent = data.name + ', ' + data.sys.country;
+    const descText = document.createElement('span');
+    descText.textContent = data.weather[0].description;
+
     return `
         <div class="weather-card">
-            <div class="icon"><img src="${iconUrl(data.weather[0].icon)}" alt="weather icon"></div>
+            <div class="icon"><img src="${icon}" alt="icon"></div>
             <div class="info">
                 <h2>${temp}°C</h2>
-                <p>${escapeHtml(data.name)}, ${escapeHtml(data.sys.country)}</p>
-                <p>${escapeHtml(data.weather[0].description)}</p>
+                <p>${cityText.innerHTML}</p>
+                <p>${descText.innerHTML}</p>
             </div>
             <div class="details">
-                <p>💧 ความชื้น<br><b>${humidity}%</b></p>
-                <p>💨 ความเร็วลม<br><b>${wind} m/s</b></p>
-                <p>🌡 ความกดอากาศ<br><b>${pressure} hPa</b></p>
+                <p>💧 ความชื้น<br><b>${data.main.humidity}%</b></p>
+                <p>💨 ความเร็วลม<br><b>${data.wind.speed} m/s</b></p>
+                <p>🌡 ความกดอากาศ<br><b>${data.main.pressure} hPa</b></p>
             </div>
         </div>`;
 }
 
 function displayWeather(data) {
-    weatherResult.innerHTML = weatherCardHtml(data);
+    weatherResult.innerHTML = makeCard(data);
     weatherResult.classList.remove('hidden');
 }
 
-// รวมข้อมูลพยากรณ์ทุก 3 ชั่วโมงให้เป็นรายวัน (สูงสุด/ต่ำสุด)
-function groupForecastByDay(forecast) {
+function getDays(forecast) {
     const days = {};
-    forecast.list.forEach((item) => {
+
+    for (let i = 0; i < forecast.list.length; i++) {
+        const item = forecast.list[i];
         const date = item.dt_txt.split(' ')[0];
+
         if (!days[date]) {
-            days[date] = { date, max: -Infinity, min: Infinity, icon: item.weather[0].icon };
+            days[date] = { date: date, max: item.main.temp_max, min: item.main.temp_min, icon: item.weather[0].icon };
+        } else {
+            if (item.main.temp_max > days[date].max) days[date].max = item.main.temp_max;
+            if (item.main.temp_min < days[date].min) days[date].min = item.main.temp_min;
         }
-        days[date].max = Math.max(days[date].max, item.main.temp_max);
-        days[date].min = Math.min(days[date].min, item.main.temp_min);
-        if (item.dt_txt.includes('12:00:00')) days[date].icon = item.weather[0].icon;
-    });
+
+        if (item.dt_txt.includes('12:00:00')) {
+            days[date].icon = item.weather[0].icon;
+        }
+    }
+
     return Object.values(days).slice(0, 5);
 }
 
+function dayName(dateStr) {
+    return new Date(dateStr).toLocaleDateString('th-TH', { weekday: 'short' });
+}
+
 function displayForecast(forecast) {
-    const days = groupForecastByDay(forecast);
-    forecastList.innerHTML = days.map((day) => {
-        const label = new Date(day.date).toLocaleDateString('th-TH', { weekday: 'short' });
-        return `
+    const days = getDays(forecast);
+    let html = '';
+
+    days.forEach(function (day) {
+        html += `
             <div class="forecast-day">
-                <div>${label}</div>
-                <img src="${iconUrl(day.icon)}" alt="">
+                <div>${dayName(day.date)}</div>
+                <img src="https://openweathermap.org/img/wn/${day.icon}@2x.png" alt="">
                 <div class="max">${Math.round(day.max)}°C</div>
                 <div class="min">${Math.round(day.min)}°C</div>
             </div>`;
-    }).join('');
+    });
+
+    forecastList.innerHTML = html;
     drawChart(days);
     forecastSection.classList.remove('hidden');
 }
 
-// กราฟแท่งอุณหภูมิสูงสุด/ต่ำสุด วาดด้วย Canvas (ไม่ใช้ไลบรารี)
 function drawChart(days) {
     const canvas = document.getElementById('tempChart');
     const ctx = canvas.getContext('2d');
-    const w = canvas.width;
-    const h = canvas.height;
-    const pad = { top: 20, right: 10, bottom: 30, left: 35 };
-    ctx.clearRect(0, 0, w, h);
+    const width = canvas.width;
+    const height = canvas.height;
+    const top = 25;
+    const bottom = 30;
+    const left = 35;
+    const maxTemp = 40;
 
-    const maxTemp = Math.max(40, ...days.map((d) => Math.ceil(d.max / 10) * 10));
-    const plotH = h - pad.top - pad.bottom;
-    const plotW = w - pad.left - pad.right;
-    const yOf = (t) => pad.top + plotH - (Math.max(t, 0) / maxTemp) * plotH;
-
+    ctx.clearRect(0, 0, width, height);
     ctx.font = '12px sans-serif';
-    ctx.fillStyle = '#666';
-    ctx.strokeStyle = '#e5e5e5';
-    for (let t = 0; t <= maxTemp; t += 10) {
-        ctx.beginPath();
-        ctx.moveTo(pad.left, yOf(t));
-        ctx.lineTo(w - pad.right, yOf(t));
-        ctx.stroke();
-        ctx.fillText(t, 5, yOf(t) + 4);
+
+    // แกน y: 0, 10, 20, 30, 40
+    function getY(temp) {
+        if (temp < 0) temp = 0;
+        return top + (height - top - bottom) * (1 - temp / maxTemp);
     }
 
-    const groupW = plotW / days.length;
-    const barW = groupW / 4;
-    days.forEach((day, i) => {
-        const x = pad.left + i * groupW + groupW / 2 - barW;
+    for (let t = 0; t <= maxTemp; t += 10) {
+        ctx.strokeStyle = '#e5e5e5';
+        ctx.beginPath();
+        ctx.moveTo(left, getY(t));
+        ctx.lineTo(width - 10, getY(t));
+        ctx.stroke();
+        ctx.fillStyle = '#666';
+        ctx.fillText(t, 8, getY(t) + 4);
+    }
+
+    const groupWidth = (width - left - 10) / days.length;
+    const barWidth = groupWidth / 4;
+
+    days.forEach(function (day, i) {
+        const x = left + i * groupWidth + groupWidth / 2 - barWidth;
+
         ctx.fillStyle = '#ff9f43';
-        ctx.fillRect(x, yOf(day.max), barW, yOf(0) - yOf(day.max));
+        ctx.fillRect(x, getY(day.max), barWidth, getY(0) - getY(day.max));
+
         ctx.fillStyle = '#1a73e8';
-        ctx.fillRect(x + barW, yOf(day.min), barW, yOf(0) - yOf(day.min));
+        ctx.fillRect(x + barWidth, getY(day.min), barWidth, getY(0) - getY(day.min));
+
         ctx.fillStyle = '#333';
-        const label = new Date(day.date).toLocaleDateString('th-TH', { weekday: 'short' });
-        ctx.fillText(label, x + barW / 2, h - 10);
+        ctx.fillText(dayName(day.date), x, height - 10);
     });
 
     ctx.fillStyle = '#ff9f43';
-    ctx.fillRect(w - 130, 4, 10, 10);
-    ctx.fillStyle = '#333';
-    ctx.fillText('สูงสุด', w - 116, 13);
+    ctx.fillRect(width - 130, 5, 10, 10);
     ctx.fillStyle = '#1a73e8';
-    ctx.fillRect(w - 70, 4, 10, 10);
+    ctx.fillRect(width - 70, 5, 10, 10);
     ctx.fillStyle = '#333';
-    ctx.fillText('ต่ำสุด', w - 56, 13);
+    ctx.fillText('สูงสุด', width - 116, 14);
+    ctx.fillText('ต่ำสุด', width - 56, 14);
 }
-
-function resetView() {
-    errorDiv.classList.add('hidden');
-    weatherResult.classList.add('hidden');
-    forecastSection.classList.add('hidden');
-    multiResult.classList.add('hidden');
-}
-
-// ---------- Load ----------
 
 async function loadWeather(city) {
-    // ดึงสภาพอากาศปัจจุบันและพยากรณ์พร้อมกัน
-    const [weather, forecast] = await Promise.all([fetchWeather(city), fetchForecast(city)]);
+    const weather = await getData('weather', city);
+    const forecast = await getData('forecast', city);
     displayWeather(weather);
     displayForecast(forecast);
 }
 
-// Optional: เรียกหลายเมืองพร้อมกันด้วย Promise.all
+// เรียกหลายเมืองพร้อมกัน
 async function loadMultipleCities(cities) {
-    const results = await Promise.all(cities.map((city) => fetchWeather(city)));
-    multiResult.innerHTML = results.map(weatherCardHtml).join('');
+    const promises = cities.map(function (city) {
+        return getData('weather', city);
+    });
+    const results = await Promise.all(promises);
+
+    let html = '';
+    results.forEach(function (data) {
+        html += makeCard(data);
+    });
+    multiResult.innerHTML = html;
     multiResult.classList.remove('hidden');
 }
 
+function showError(message) {
+    errorDiv.textContent = '❌ ' + message;
+    errorDiv.classList.remove('hidden');
+}
+
 async function handleSearch() {
+    errorDiv.classList.add('hidden');
+    weatherResult.classList.add('hidden');
+    forecastSection.classList.add('hidden');
+    multiResult.classList.add('hidden');
+
     if (apiKey === 'YOUR_API_KEY') {
-        errorDiv.textContent = '❌ ยังไม่ได้ใส่ API Key ในไฟล์ app.js (บรรทัดแรก)';
-        errorDiv.classList.remove('hidden');
+        showError('ยังไม่ได้ใส่ API Key ในไฟล์ app.js');
         return;
     }
 
-    const cities = cityInput.value.split(',').map((c) => c.trim()).filter(Boolean);
+    const cities = cityInput.value.split(',')
+        .map(function (c) { return c.trim(); })
+        .filter(function (c) { return c !== ''; });
+
     if (cities.length === 0) {
-        errorDiv.textContent = 'กรุณาพิมพ์ชื่อเมือง';
-        errorDiv.classList.remove('hidden');
+        showError('กรุณาพิมพ์ชื่อเมือง');
         return;
     }
 
-    resetView();
     loading.classList.remove('hidden');
     searchBtn.disabled = true;
+
     try {
         if (cities.length === 1) {
             await loadWeather(cities[0]);
@@ -196,10 +215,12 @@ async function handleSearch() {
             await loadMultipleCities(cities);
         }
     } catch (error) {
-        errorDiv.textContent = '❌ ' + (error instanceof TypeError
-            ? 'ไม่สามารถโหลดข้อมูลได้ กรุณาตรวจสอบ Internet'
-            : error.message);
-        errorDiv.classList.remove('hidden');
+        console.log(error);
+        if (error instanceof TypeError) {
+            showError('ไม่สามารถโหลดข้อมูลได้ กรุณาตรวจสอบ Internet');
+        } else {
+            showError(error.message);
+        }
     } finally {
         loading.classList.add('hidden');
         searchBtn.disabled = false;
@@ -207,6 +228,8 @@ async function handleSearch() {
 }
 
 searchBtn.addEventListener('click', handleSearch);
-cityInput.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') handleSearch();
+cityInput.addEventListener('keydown', function (event) {
+    if (event.key === 'Enter') {
+        handleSearch();
+    }
 });

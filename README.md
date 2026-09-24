@@ -1,35 +1,23 @@
 # Weather Dashboard
 
-เว็บแอปพลิเคชันแสดงสภาพอากาศ สร้างด้วย HTML, CSS และ JavaScript โดยดึงข้อมูลจาก Public API ของ [OpenWeatherMap](https://openweathermap.org/api) (ใบงานที่ 5: Working with JSON & Public API)
+เว็บดูสภาพอากาศ ทำจาก HTML, CSS, JavaScript ดึงข้อมูลจาก OpenWeatherMap API
+(ใบงานที่ 5: Working with JSON & Public API)
 
-## ฟีเจอร์
+## สิ่งที่ทำได้
+- ค้นหาอากาศปัจจุบันของเมือง (อุณหภูมิ ความชื้น ลม ความกดอากาศ)
+- พยากรณ์ 5 วัน และกราฟอุณหภูมิสูงสุด/ต่ำสุด
+- มี Loading และแสดง Error เมื่อไม่พบเมือง / API Key ผิด / Internet หลุด
+- พิมพ์หลายเมืองคั่นด้วย , ได้ เช่น `Bangkok, Chiang Mai, Phuket` (ใช้ Promise.all)
 
-- ค้นหาสภาพอากาศปัจจุบันของเมืองที่ต้องการ (อุณหภูมิ ความชื้น ความเร็วลม ความกดอากาศ)
-- พยากรณ์อากาศ 5 วัน พร้อมกราฟอุณหภูมิสูงสุด/ต่ำสุด (วาดด้วย Canvas)
-- แสดงสถานะ Loading และจัดการ Error ด้วย `try/catch` (ไม่พบเมือง, API Key ผิด, Internet หลุด)
-- ใช้ `async/await` กับ Fetch API
-- Optional: พิมพ์หลายเมืองคั่นด้วย `,` เช่น `Bangkok, Chiang Mai, Phuket` เพื่อเรียกพร้อมกันด้วย `Promise.all()`
+## ไฟล์
+- index.html - โครงหน้าเว็บ
+- style.css - หน้าตา
+- app.js - เรียก API อ่าน JSON และแสดงผล
+- assets/ - เก็บรูป (ยังไม่ได้ใช้)
 
-## โครงสร้างโปรเจกต์
+## วิธีรัน
+1. สมัคร API Key ฟรีที่ https://openweathermap.org/api
+2. เปิด app.js แล้วเปลี่ยน `YOUR_API_KEY` เป็น key ของตัวเอง
+3. เปิด index.html ในเบราว์เซอร์ พิมพ์ชื่อเมืองภาษาอังกฤษแล้วกดค้นหา
 
-```
-weather-dashboard/
-├── index.html   # โครงสร้างหน้าเว็บ
-├── style.css    # สไตล์
-├── app.js       # Logic: Fetch API, อ่าน JSON, แสดงผลบน DOM
-└── assets/      # รูปภาพ (ถ้ามี)
-```
-
-## วิธีใช้งาน
-
-1. สมัครบัญชีฟรีที่ https://openweathermap.org/api แล้วคัดลอก API Key (key ใหม่อาจใช้เวลาสักครู่กว่าจะ Active)
-2. เปิดไฟล์ `app.js` แล้วแทนที่ `YOUR_API_KEY` ที่บรรทัดแรกด้วย API Key ของคุณ
-3. เปิด `index.html` ในเบราว์เซอร์ พิมพ์ชื่อเมือง (ภาษาอังกฤษ) แล้วกด "ค้นหา"
-
-> อย่า commit API Key จริงขึ้น GitHub
-
-## การทำงาน
-
-```
-ผู้ใช้พิมพ์เมือง → JavaScript → fetch() → OpenWeatherMap API → JSON → อ่านค่า (เช่น data.main.temp) → อัปเดต DOM → Dashboard
-```
+หมายเหตุ: ใน repo นี้ไม่ได้ใส่ API Key จริงไว้
