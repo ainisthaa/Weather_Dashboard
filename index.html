@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <h1>🌤 Weather Dashboard</h1>
+
+        <div class="search-box">
+            <input type="text" id="cityInput" placeholder="ค้นหาเมือง (เช่น Bangkok, Chiang Mai)">
+            <button id="searchBtn">ค้นหา</button>
+        </div>
+        <p class="hint">พิมพ์หลายเมืองคั่นด้วยเครื่องหมายจุลภาค (,) เพื่อเปรียบเทียบพร้อมกัน</p>
+
+        <div id="loading" class="hidden">⏳ กำลังโหลดข้อมูล...</div>
+        <div id="error" class="hidden"></div>
+
+        <div id="weatherResult" class="hidden"></div>
+        <div id="forecastSection" class="hidden">
+            <h3>พยากรณ์อากาศ 5 วัน</h3>
+            <div id="forecastList" class="forecast-list"></div>
+            <h3>กราฟอุณหภูมิรายวัน</h3>
+            <canvas id="tempChart" width="600" height="240"></canvas>
+        </div>
+        <div id="multiResult" class="hidden"></div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
